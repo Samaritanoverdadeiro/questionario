@@ -153,3 +153,34 @@ input[type="password"]:focus {
         font-size: 24px;
     }
 }
+
+
+
+.login-help {
+    margin-top: 25px;
+    padding: 15px;
+    background-color: #f8f9fa;
+    border-radius: 8px;
+    border-left: 4px solid #2b5876;
+}
+
+.login-help h3 {
+    color: #2b5876;
+    margin-bottom: 10px;
+    font-size: 16px;
+}
+
+.login-help p {
+    margin-bottom: 8px;
+    font-size: 14px;
+    line-height: 1.4;
+}
+
+.login-help strong {
+    color: #2b5876;
+}
+
+.login-help em {
+    color: #6c757d;
+    font-size: 12px;
+}
