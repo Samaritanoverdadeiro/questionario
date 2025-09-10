@@ -1,0 +1,4 @@
+editar e excluir a galera ali no admin ( fazer aparecer as pessoas ativas e inativas)
+criar as abas da esquerda
+
+

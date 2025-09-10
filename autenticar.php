@@ -38,6 +38,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         header('Location: dashboard_professor.php');
                     } elseif ($usuario['tipo'] === 'aluno') {
                         header('Location: dashboard_aluno.php');
+                    } elseif ($usuario['tipo'] === 'admin') {
+                        header('Location: dashboard_admin.php');
                     } else {
                         header('Location: index.html?erro=tipo_invalido');
                     }
