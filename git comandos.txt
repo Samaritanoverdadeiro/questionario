@@ -4,3 +4,8 @@ git commit -m "primeiro commit"
 git branch -M main 
 git remote add origin https://github.com/Samaritanoverdadeiro/questionario.git 
 git push -u origin main 
+
+
+git add . 
+git commit -m "fiz o admin"
+git push -u origin main 
