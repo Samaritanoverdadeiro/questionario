@@ -28,6 +28,15 @@ if (isset($_GET['logout'])) {
     exit;
 }
 
+// Verificar se há uma aba ativa na sessão ou definir padrão
+$aba_ativa = $_SESSION['aba_ativa'] ?? 'instituicoes';
+
+// Processar mudança de aba via GET
+if (isset($_GET['aba'])) {
+    $aba_ativa = $_GET['aba'];
+    $_SESSION['aba_ativa'] = $aba_ativa;
+}
+
 // Buscar dados do banco
 // Instituições
 $stmt_instituicoes = $pdo->query("SELECT * FROM instituicoes");
@@ -60,6 +69,8 @@ $count_questoes = $pdo->query("SELECT COUNT(*) as total FROM questoes")->fetch()
 // Processar formulários
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = $_POST['action'] ?? '';
+    $aba_ativa = $_POST['aba_ativa'] ?? $aba_ativa;
+    $_SESSION['aba_ativa'] = $aba_ativa;
     
     if ($action === 'add_instituicao') {
         $nome = $_POST['nome'];
@@ -70,7 +81,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $stmt = $pdo->prepare("INSERT INTO instituicoes (nome, cnpj, endereco, telefone) VALUES (?, ?, ?, ?)");
         $stmt->execute([$nome, $cnpj, $endereco, $telefone]);
         
-        header("Location: dashboard_admin.php");
+        header("Location: dashboard_admin.php?aba=" . $aba_ativa);
         exit;
     }
     elseif ($action === 'add_aluno') {
@@ -82,7 +93,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $stmt = $pdo->prepare("INSERT INTO usuarios (nome, email, senha_hash, tipo, instituicao_id) VALUES (?, ?, ?, 'aluno', ?)");
         $stmt->execute([$nome, $email, $senha, $instituicao_id]);
         
-        header("Location: dashboard_admin.php");
+        header("Location: dashboard_admin.php?aba=" . $aba_ativa);
         exit;
     }
     elseif ($action === 'add_professor') {
@@ -94,7 +105,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $stmt = $pdo->prepare("INSERT INTO usuarios (nome, email, senha_hash, tipo, instituicao_id) VALUES (?, ?, ?, 'professor', ?)");
         $stmt->execute([$nome, $email, $senha, $instituicao_id]);
         
-        header("Location: dashboard_admin.php");
+        header("Location: dashboard_admin.php?aba=" . $aba_ativa);
         exit;
     }
     elseif ($action === 'delete_user') {
@@ -102,15 +113,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $stmt = $pdo->prepare("UPDATE usuarios SET ativo = 0 WHERE id = ?");
         $stmt->execute([$id]);
         
-        header("Location: dashboard_admin.php");
+        header("Location: dashboard_admin.php?aba=" . $aba_ativa);
         exit;
     }
     elseif ($action === 'delete_instituicao') {
         $id = $_POST['id'];
-        $stmt = $pdo->prepare("DELETE FROM instituicoes WHERE id = ?");
+        // Em vez de deletar, marcar como inativo
+        $stmt = $pdo->prepare("UPDATE instituicoes SET ativo = 0 WHERE id = ?");
         $stmt->execute([$id]);
-        
-        header("Location: dashboard_admin.php");
+    
+        $_SESSION['mensagem'] = "Instituição marcada como inativa!";
+        $_SESSION['tipo_mensagem'] = "sucesso";
+        header("Location: dashboard_admin.php?aba=" . $aba_ativa);
         exit;
     }
 }
@@ -124,6 +138,37 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <title>Dashboard Admin - Banco de Questões</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="estilos/estilo_dashboard_admin.css">
+    <style>
+        .tab-content {
+            display: none;
+        }
+        
+        .tab-content.active {
+            display: block;
+            animation: fadeIn 0.3s ease-in;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        
+        .view-btn.active {
+            background-color: var(--primary);
+            color: white;
+            position: relative;
+        }
+        
+        .view-btn.active::after {
+            content: '';
+            position: absolute;
+            bottom: -2px;
+            left: 0;
+            width: 100%;
+            height: 3px;
+            background-color: var(--primary);
+        }
+    </style>
 </head>
 <body>
     <!-- Sidebar -->
@@ -156,6 +201,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <div class="menu-item">
                 <i class="fas fa-clipboard-list"></i>
                 <span>Provas</span>
+            </div>
+            <div class="menu-item">
+                <a href="relatorio/relatorio.php" style="color: inherit; text-decoration: none;">
+                <i class="fas fa-chart-bar"></i>
+                <span>Relatórios</span>
+                </a>
             </div>
             <div class="menu-item">
                 <i class="fas fa-cog"></i>
@@ -228,22 +279,31 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             </div>
         </div>
 
-        <!-- Resto do conteúdo permanece igual -->
         <!-- Switch View Buttons -->
         <div class="switch-view">
-            <button class="view-btn active" onclick="showTab('instituicoes')">Instituições</button>
-            <button class="view-btn" onclick="showTab('alunos')">Alunos</button>
-            <button class="view-btn" onclick="showTab('professores')">Professores</button>
+            <button class="view-btn <?php echo $aba_ativa === 'instituicoes' ? 'active' : ''; ?>" 
+                    onclick="showTab('instituicoes', this)">
+                Instituições
+            </button>
+            <button class="view-btn <?php echo $aba_ativa === 'alunos' ? 'active' : ''; ?>" 
+                    onclick="showTab('alunos', this)">
+                Alunos
+            </button>
+            <button class="view-btn <?php echo $aba_ativa === 'professores' ? 'active' : ''; ?>" 
+                    onclick="showTab('professores', this)">
+                Professores
+            </button>
         </div>
 
         <!-- Instituições -->
-        <div id="instituicoes" class="tab-content active">
+        <div id="instituicoes" class="tab-content <?php echo $aba_ativa === 'instituicoes' ? 'active' : ''; ?>">
             <div class="card">
                 <div class="card-header">
                     <h3>Cadastrar Nova Instituição</h3>
                 </div>
                 <form action="dashboard_admin.php" method="POST">
                     <input type="hidden" name="action" value="add_instituicao">
+                    <input type="hidden" name="aba_ativa" value="instituicoes">
                     <div class="form-row">
                         <div class="form-group">
                             <label for="instituicao_nome">Nome da Instituição</label>
@@ -292,10 +352,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             <td><?php echo($instituicao['endereco']); ?></td>
                             <td><?php echo($instituicao['telefone']); ?></td>
                             <td class="actions">
-                                <button class="btn btn-primary"><i class="fas fa-edit"></i></button>
+                                <a href="editar/editar_instituicao.php?id=<?php echo $instituicao['id']; ?>&aba=instituicoes" class="btn btn-primary">
+                                    <i class="fas fa-edit"></i>
+                                </a>
                                 <form action="dashboard_admin.php" method="POST" style="display: inline;">
                                     <input type="hidden" name="action" value="delete_instituicao">
                                     <input type="hidden" name="id" value="<?php echo $instituicao['id']; ?>">
+                                    <input type="hidden" name="aba_ativa" value="instituicoes">
                                     <button type="submit" class="btn btn-danger" onclick="return confirm('Tem certeza que deseja excluir esta instituição?')">
                                         <i class="fas fa-trash"></i>
                                     </button>
@@ -309,13 +372,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         </div>
 
         <!-- Alunos -->
-        <div id="alunos" class="tab-content">
+        <div id="alunos" class="tab-content <?php echo $aba_ativa === 'alunos' ? 'active' : ''; ?>">
             <div class="card">
                 <div class="card-header">
                     <h3>Cadastrar Novo Aluno</h3>
                 </div>
                 <form action="dashboard_admin.php" method="POST">
                     <input type="hidden" name="action" value="add_aluno">
+                    <input type="hidden" name="aba_ativa" value="alunos">
                     <div class="form-row">
                         <div class="form-group">
                             <label for="aluno_nome">Nome Completo</label>
@@ -375,10 +439,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 </span>
                             </td>
                             <td class="actions">
-                                <button class="btn btn-primary"><i class="fas fa-edit"></i></button>
+                                <a href="editar/editar_aluno.php?id=<?php echo $aluno['id']; ?>&aba=alunos" class="btn btn-primary">
+                                    <i class="fas fa-edit"></i>
+                                </a>
                                 <form action="dashboard_admin.php" method="POST" style="display: inline;">
                                     <input type="hidden" name="action" value="delete_user">
                                     <input type="hidden" name="id" value="<?php echo $aluno['id']; ?>">
+                                    <input type="hidden" name="aba_ativa" value="alunos">
                                     <button type="submit" class="btn btn-danger" onclick="return confirm('Tem certeza que deseja desativar este aluno?')">
                                         <i class="fas fa-trash"></i>
                                     </button>
@@ -392,13 +459,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         </div>
 
         <!-- Professores -->
-        <div id="professores" class="tab-content">
+        <div id="professores" class="tab-content <?php echo $aba_ativa === 'professores' ? 'active' : ''; ?>">
             <div class="card">
                 <div class="card-header">
                     <h3>Cadastrar Novo Professor</h3>
                 </div>
                 <form action="dashboard_admin.php" method="POST">
                     <input type="hidden" name="action" value="add_professor">
+                    <input type="hidden" name="aba_ativa" value="professores">
                     <div class="form-row">
                         <div class="form-group">
                             <label for="professor_nome">Nome Completo</label>
@@ -458,10 +526,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 </span>
                             </td>
                             <td class="actions">
-                                <button class="btn btn-primary"><i class="fas fa-edit"></i></button>
+                                <a href="editar/editar_professor.php?id=<?php echo $professor['id']; ?>&aba=professores" class="btn btn-primary">
+                                    <i class="fas fa-edit"></i>
+                                </a>
                                 <form action="dashboard_admin.php" method="POST" style="display: inline;">
                                     <input type="hidden" name="action" value="delete_user">
                                     <input type="hidden" name="id" value="<?php echo $professor['id']; ?>">
+                                    <input type="hidden" name="aba_ativa" value="professores">
                                     <button type="submit" class="btn btn-danger" onclick="return confirm('Tem certeza que deseja desativar este professor?')">
                                         <i class="fas fa-trash"></i>
                                     </button>
@@ -476,7 +547,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     </div>
 
     <script>
-        function showTab(tabName) {
+        function showTab(tabName, buttonElement) {
+            // Atualizar parâmetro na URL sem recarregar a página
+            const url = new URL(window.location);
+            url.searchParams.set('aba', tabName);
+            window.history.replaceState({}, '', url);
+            
             // Hide all tabs
             document.querySelectorAll('.tab-content').forEach(tab => {
                 tab.classList.remove('active');
@@ -490,8 +566,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 btn.classList.remove('active');
             });
             
-            event.target.classList.add('active');
+            buttonElement.classList.add('active');
+            
+            // Atualizar todos os hidden fields de aba ativa nos formulários
+            document.querySelectorAll('input[name="aba_ativa"]').forEach(input => {
+                input.value = tabName;
+            });
         }
+
+        // Restaurar aba da URL ao carregar a página
+        document.addEventListener('DOMContentLoaded', function() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const abaUrl = urlParams.get('aba');
+            
+            if (abaUrl) {
+                const button = document.querySelector(`.view-btn[onclick*="${abaUrl}"]`);
+                if (button) {
+                    showTab(abaUrl, button);
+                }
+            }
+        });
     </script>
 </body>
 </html>

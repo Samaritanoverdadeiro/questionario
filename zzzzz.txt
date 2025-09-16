@@ -1,4 +1,4 @@
-editar e excluir a galera ali no admin ( fazer aparecer as pessoas ativas e inativas)
+FAZER VOLTAR PRA MESMA ABA QUANDO CLICAR NSO BOTOES
 criar as abas da esquerda
 
 
