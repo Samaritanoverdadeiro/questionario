@@ -30,7 +30,9 @@ if (isset($_GET['id'])) {
     if (!$instituicao) {
         $_SESSION['mensagem'] = "Instituição não encontrada!";
         $_SESSION['tipo_mensagem'] = "erro";
-        header("Location: ../dashboard_admin.php");
+        // Obter a aba da URL ou usar 'instituicoes' como padrão
+        $aba = isset($_GET['aba']) ? $_GET['aba'] : 'instituicoes';
+        header("Location: ../dashboard_admin.php?aba=" . $aba);
         exit;
     }
 }
@@ -48,7 +50,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($stmt->execute([$nome, $cnpj, $endereco, $telefone, $id])) {
         $_SESSION['mensagem'] = "Instituição atualizada com sucesso!";
         $_SESSION['tipo_mensagem'] = "sucesso";
-        header("Location: ../dashboard_admin.php");
+        
+        // Redirecionar mantendo a aba correta (instituições)
+        $aba = isset($_POST['aba_ativa']) ? $_POST['aba_ativa'] : 'instituicoes';
+        header("Location: ../dashboard_admin.php?aba=" . $aba);
         exit;
     } else {
         $_SESSION['mensagem'] = "Erro ao atualizar instituição!";
@@ -60,6 +65,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $stmt->execute([$id]);
     $instituicao = $stmt->fetch(PDO::FETCH_ASSOC);
 }
+
+// Obter a aba da URL para usar no formulário
+$aba = isset($_GET['aba']) ? $_GET['aba'] : 'instituicoes';
 ?>
 
 <!DOCTYPE html>
@@ -80,7 +88,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         </div>
         <div class="menu">
             <div class="menu-item">
-                <a href="../dashboard_admin.php" style="color: inherit; text-decoration: none;">
+                <a href="../dashboard_admin.php?aba=<?php echo $aba; ?>" style="color: inherit; text-decoration: none;">
                     <i class="fas fa-arrow-left"></i>
                     <span>Voltar</span>
                 </a>
@@ -90,13 +98,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     <div class="main-content">
         <div class="container">
-            <a href="../dashboard_admin.php" class="btn btn-primary back-btn">
+            <a href="../dashboard_admin.php?aba=<?php echo $aba; ?>" class="btn btn-primary back-btn">
                 <i class="fas fa-arrow-left"></i> Voltar
             </a>
             
             <div class="card">
                 <div class="card-header">
-                    <h2>Editar Instituição</h2>
+                    <h2><i class="fas fa-building"></i> Editar Instituição</h2>
                 </div>
                 
                 <?php if (isset($_SESSION['mensagem'])): ?>
@@ -112,6 +120,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <?php if ($instituicao): ?>
                 <form action="editar_instituicao.php" method="POST">
                     <input type="hidden" name="id" value="<?php echo $instituicao['id']; ?>">
+                    <input type="hidden" name="aba_ativa" value="<?php echo $aba; ?>">
                     
                     <div class="form-row">
                         <div class="form-group">
@@ -145,13 +154,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                value="<?php echo date('d/m/Y H:i', strtotime($instituicao['criado_em'])); ?>" disabled>
                     </div>
                     
-                    <button type="submit" class="btn btn-primary">
-                        <i class="fas fa-save"></i> Salvar Alterações
-                    </button>
-                    
-                    <a href="../dashboard_admin.php" class="btn btn-secondary">
-                        Cancelar
-                    </a>
+                    <div class="form-actions">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-save"></i> Salvar Alterações
+                        </button>
+                        
+                        <a href="../dashboard_admin.php?aba=<?php echo $aba; ?>" class="btn btn-secondary">
+                            Cancelar
+                        </a>
+                    </div>
                 </form>
                 <?php else: ?>
                 <div class="message erro">

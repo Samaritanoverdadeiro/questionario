@@ -21,6 +21,52 @@ try {
     die("Erro na conexão: " . $e->getMessage());
 }
 
+// Função para verificar professores desvinculados (Versão Segura)
+function verificarProfessoresDesvinculados($pdo)
+{
+    // Iniciar transação para segurança
+    $pdo->beginTransaction();
+
+    try {
+        // Primeiro, buscar os IDs dos professores que precisam ser desvinculados
+        $stmt = $pdo->query("
+            SELECT u.id
+            FROM usuarios u 
+            INNER JOIN instituicoes i ON u.instituicao_id = i.id 
+            WHERE u.tipo = 'professor' 
+            AND u.ativo = 0 
+            AND i.ativo = 1
+        ");
+
+        $ids = $stmt->fetchAll(PDO::FETCH_COLUMN);
+
+        if (count($ids) > 0) {
+            $placeholders = implode(',', array_fill(0, count($ids), '?'));
+
+            // Desvincular automaticamente esses professores
+            $stmt = $pdo->prepare("
+                UPDATE usuarios 
+                SET instituicao_id = NULL 
+                WHERE id IN ($placeholders)
+            ");
+            $stmt->execute($ids);
+        }
+
+        // Confirmar transação
+        $pdo->commit();
+
+        return count($ids);
+    } catch (Exception $e) {
+        // Em caso de erro, reverter transação
+        $pdo->rollBack();
+        error_log("Erro ao verificar professores desvinculados: " . $e->getMessage());
+        return 0;
+    }
+}
+
+// Executar a verificação
+$professores_corrigidos = verificarProfessoresDesvinculados($pdo);
+
 // Processar logout
 if (isset($_GET['logout'])) {
     session_destroy();
@@ -39,7 +85,8 @@ if (isset($_GET['aba'])) {
 
 // Buscar dados do banco
 // Instituições
-$stmt_instituicoes = $pdo->query("SELECT * FROM instituicoes");
+// Buscar instituições (ativas e inativas)
+$stmt_instituicoes = $pdo->query("SELECT * FROM instituicoes ORDER BY ativo DESC, nome ASC");
 $instituicoes = $stmt_instituicoes->fetchAll(PDO::FETCH_ASSOC);
 
 // Alunos
@@ -61,7 +108,10 @@ $stmt_professores = $pdo->query("
 $professores = $stmt_professores->fetchAll(PDO::FETCH_ASSOC);
 
 // Contadores para o dashboard
-$count_instituicoes = $pdo->query("SELECT COUNT(*) as total FROM instituicoes")->fetch()['total'];
+// Contadores para o dashboard
+$count_instituicoes_ativas = $pdo->query("SELECT COUNT(*) as total FROM instituicoes WHERE ativo = 1")->fetch()['total'];
+$count_instituicoes_inativas = $pdo->query("SELECT COUNT(*) as total FROM instituicoes WHERE ativo = 0")->fetch()['total'];
+$count_instituicoes_total = $count_instituicoes_ativas + $count_instituicoes_inativas;
 $count_alunos = $pdo->query("SELECT COUNT(*) as total FROM usuarios WHERE tipo = 'aluno'")->fetch()['total'];
 $count_professores = $pdo->query("SELECT COUNT(*) as total FROM usuarios WHERE tipo = 'professor'")->fetch()['total'];
 $count_questoes = $pdo->query("SELECT COUNT(*) as total FROM questoes")->fetch()['total'];
@@ -71,59 +121,126 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = $_POST['action'] ?? '';
     $aba_ativa = $_POST['aba_ativa'] ?? $aba_ativa;
     $_SESSION['aba_ativa'] = $aba_ativa;
-    
+
     if ($action === 'add_instituicao') {
         $nome = $_POST['nome'];
         $cnpj = $_POST['cnpj'];
         $endereco = $_POST['endereco'];
         $telefone = $_POST['telefone'];
-        
+
         $stmt = $pdo->prepare("INSERT INTO instituicoes (nome, cnpj, endereco, telefone) VALUES (?, ?, ?, ?)");
         $stmt->execute([$nome, $cnpj, $endereco, $telefone]);
-        
+
         header("Location: dashboard_admin.php?aba=" . $aba_ativa);
         exit;
-    }
-    elseif ($action === 'add_aluno') {
+    } elseif ($action === 'add_aluno') {
         $nome = $_POST['nome'];
         $email = $_POST['email'];
         $senha = password_hash($_POST['senha'], PASSWORD_DEFAULT);
         $instituicao_id = $_POST['instituicao_id'];
-        
+
         $stmt = $pdo->prepare("INSERT INTO usuarios (nome, email, senha_hash, tipo, instituicao_id) VALUES (?, ?, ?, 'aluno', ?)");
         $stmt->execute([$nome, $email, $senha, $instituicao_id]);
-        
+
         header("Location: dashboard_admin.php?aba=" . $aba_ativa);
         exit;
-    }
-    elseif ($action === 'add_professor') {
+    } elseif ($action === 'add_professor') {
         $nome = $_POST['nome'];
         $email = $_POST['email'];
         $senha = password_hash($_POST['senha'], PASSWORD_DEFAULT);
         $instituicao_id = $_POST['instituicao_id'];
-        
+
         $stmt = $pdo->prepare("INSERT INTO usuarios (nome, email, senha_hash, tipo, instituicao_id) VALUES (?, ?, ?, 'professor', ?)");
         $stmt->execute([$nome, $email, $senha, $instituicao_id]);
-        
+
         header("Location: dashboard_admin.php?aba=" . $aba_ativa);
         exit;
-    }
-    elseif ($action === 'delete_user') {
+    } elseif ($action === 'delete_user') {
         $id = $_POST['id'];
-        $stmt = $pdo->prepare("UPDATE usuarios SET ativo = 0 WHERE id = ?");
-        $stmt->execute([$id]);
-        
-        header("Location: dashboard_admin.php?aba=" . $aba_ativa);
-        exit;
-    }
-    elseif ($action === 'delete_instituicao') {
-        $id = $_POST['id'];
-        // Em vez de deletar, marcar como inativo
-        $stmt = $pdo->prepare("UPDATE instituicoes SET ativo = 0 WHERE id = ?");
-        $stmt->execute([$id]);
-    
-        $_SESSION['mensagem'] = "Instituição marcada como inativa!";
+        $tipo = $_POST['tipo'] ?? ''; // Novo campo para identificar o tipo de usuário
+
+        if ($tipo === 'professor') {
+            // Para professores: desativar e desvincular da instituição
+            $stmt = $pdo->prepare("UPDATE usuarios SET ativo = 0, instituicao_id = NULL WHERE id = ?");
+            $stmt->execute([$id]);
+
+            $_SESSION['mensagem'] = "Professor desativado e desvinculado da instituição!";
+        } else {
+            // Para alunos: apenas desativar
+            $stmt = $pdo->prepare("UPDATE usuarios SET ativo = 0 WHERE id = ?");
+            $stmt->execute([$id]);
+
+            $_SESSION['mensagem'] = "Usuário desativado com sucesso!";
+        }
+
         $_SESSION['tipo_mensagem'] = "sucesso";
+        header("Location: dashboard_admin.php?aba=" . $aba_ativa);
+        exit;
+    } elseif ($action === 'delete_instituicao') {
+        $id = $_POST['id'];
+
+        // Iniciar transação para garantir consistência
+        $pdo->beginTransaction();
+
+        try {
+            // 1. Desativar a instituição
+            $stmt = $pdo->prepare("UPDATE instituicoes SET ativo = 0 WHERE id = ?");
+            $stmt->execute([$id]);
+
+            // 2. Desativar todos os professores vinculados a esta instituição
+            $stmt = $pdo->prepare("UPDATE usuarios SET ativo = 0, instituicao_id = NULL WHERE instituicao_id = ? AND tipo = 'professor'");
+            $stmt->execute([$id]);
+
+            // Confirmar transação
+            $pdo->commit();
+
+            $_SESSION['mensagem'] = "Instituição e professores vinculados desativados com sucesso!";
+            $_SESSION['tipo_mensagem'] = "sucesso";
+        } catch (Exception $e) {
+            // Em caso de erro, reverter transação
+            $pdo->rollBack();
+            $_SESSION['mensagem'] = "Erro ao desativar instituição: " . $e->getMessage();
+            $_SESSION['tipo_mensagem'] = "erro";
+        }
+
+        header("Location: dashboard_admin.php?aba=" . $aba_ativa);
+        exit;
+    } elseif ($action === 'toggle_instituicao_status') {
+        $id = $_POST['id'];
+        $novo_status = $_POST['novo_status'];
+
+        // Iniciar transação para segurança
+        $pdo->beginTransaction();
+
+        try {
+            // Atualizar status da instituição
+            $stmt = $pdo->prepare("UPDATE instituicoes SET ativo = ? WHERE id = ?");
+            $stmt->execute([$novo_status, $id]);
+
+            if ($novo_status == 0) {
+                // Se está desativando, desativar também os professores vinculados
+                $stmt = $pdo->prepare("UPDATE usuarios SET ativo = 0, instituicao_id = NULL WHERE instituicao_id = ? AND tipo = 'professor'");
+                $stmt->execute([$id]);
+
+                $_SESSION['mensagem'] = "Instituição e professores desativados com sucesso!";
+            } else {
+                // Se está ativando, ativar os professores vinculados
+                $stmt = $pdo->prepare("UPDATE usuarios SET ativo = 1 WHERE instituicao_id = ? AND tipo = 'professor'");
+                $stmt->execute([$id]);
+
+                $_SESSION['mensagem'] = "Instituição e professores ativados com sucesso!";
+            }
+
+            // Confirmar transação
+            $pdo->commit();
+            $_SESSION['tipo_mensagem'] = "sucesso";
+        } catch (Exception $e) {
+            // Em caso de erro, reverter transação
+            $pdo->rollBack();
+            $_SESSION['mensagem'] = "Erro ao alterar status: " . $e->getMessage();
+            $_SESSION['tipo_mensagem'] = "erro";
+        }
+
         header("Location: dashboard_admin.php?aba=" . $aba_ativa);
         exit;
     }
@@ -132,44 +249,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 <!DOCTYPE html>
 <html lang="pt-BR">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard Admin - Banco de Questões</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="estilos/estilo_dashboard_admin.css">
-    <style>
-        .tab-content {
-            display: none;
-        }
-        
-        .tab-content.active {
-            display: block;
-            animation: fadeIn 0.3s ease-in;
-        }
-        
-        @keyframes fadeIn {
-            from { opacity: 0; }
-            to { opacity: 1; }
-        }
-        
-        .view-btn.active {
-            background-color: var(--primary);
-            color: white;
-            position: relative;
-        }
-        
-        .view-btn.active::after {
-            content: '';
-            position: absolute;
-            bottom: -2px;
-            left: 0;
-            width: 100%;
-            height: 3px;
-            background-color: var(--primary);
-        }
-    </style>
+    <link rel="stylesheet" href="estilos/estilo_dashboard_tabs.css">
 </head>
+
 <body>
     <!-- Sidebar -->
     <div class="sidebar">
@@ -204,8 +293,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             </div>
             <div class="menu-item">
                 <a href="relatorio/relatorio.php" style="color: inherit; text-decoration: none;">
-                <i class="fas fa-chart-bar"></i>
-                <span>Relatórios</span>
+                    <i class="fas fa-chart-bar"></i>
+                    <span>Relatórios</span>
                 </a>
             </div>
             <div class="menu-item">
@@ -246,8 +335,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     <i class="fas fa-building"></i>
                 </div>
                 <div class="stat-text">
-                    <h3><?php echo $count_instituicoes; ?></h3>
+                    <h3><?php echo $count_instituicoes_total; ?></h3>
                     <p>Instituições</p>
+                    <small><?php echo $count_instituicoes_ativas; ?> ativas, <?php echo $count_instituicoes_inativas; ?> inativas</small>
                 </div>
             </div>
             <div class="stat-card">
@@ -281,16 +371,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         <!-- Switch View Buttons -->
         <div class="switch-view">
-            <button class="view-btn <?php echo $aba_ativa === 'instituicoes' ? 'active' : ''; ?>" 
-                    onclick="showTab('instituicoes', this)">
+            <button class="view-btn <?php echo $aba_ativa === 'instituicoes' ? 'active' : ''; ?>"
+                onclick="showTab('instituicoes', this)">
                 Instituições
             </button>
-            <button class="view-btn <?php echo $aba_ativa === 'alunos' ? 'active' : ''; ?>" 
-                    onclick="showTab('alunos', this)">
+            <button class="view-btn <?php echo $aba_ativa === 'alunos' ? 'active' : ''; ?>"
+                onclick="showTab('alunos', this)">
                 Alunos
             </button>
-            <button class="view-btn <?php echo $aba_ativa === 'professores' ? 'active' : ''; ?>" 
-                    onclick="showTab('professores', this)">
+            <button class="view-btn <?php echo $aba_ativa === 'professores' ? 'active' : ''; ?>"
+                onclick="showTab('professores', this)">
                 Professores
             </button>
         </div>
@@ -340,31 +430,55 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             <th>CNPJ</th>
                             <th>Endereço</th>
                             <th>Telefone</th>
+                            <th>Status</th>
                             <th>Ações</th>
                         </tr>
                     </thead>
                     <tbody>
                         <?php foreach ($instituicoes as $instituicao): ?>
-                        <tr>
-                            <td><?php echo $instituicao['id']; ?></td>
-                            <td><?php echo($instituicao['nome']); ?></td>
-                            <td><?php echo($instituicao['cnpj']); ?></td>
-                            <td><?php echo($instituicao['endereco']); ?></td>
-                            <td><?php echo($instituicao['telefone']); ?></td>
-                            <td class="actions">
-                                <a href="editar/editar_instituicao.php?id=<?php echo $instituicao['id']; ?>&aba=instituicoes" class="btn btn-primary">
-                                    <i class="fas fa-edit"></i>
-                                </a>
-                                <form action="dashboard_admin.php" method="POST" style="display: inline;">
-                                    <input type="hidden" name="action" value="delete_instituicao">
-                                    <input type="hidden" name="id" value="<?php echo $instituicao['id']; ?>">
-                                    <input type="hidden" name="aba_ativa" value="instituicoes">
-                                    <button type="submit" class="btn btn-danger" onclick="return confirm('Tem certeza que deseja excluir esta instituição?')">
-                                        <i class="fas fa-trash"></i>
-                                    </button>
-                                </form>
-                            </td>
-                        </tr>
+                            <tr>
+                                <td><?php echo $instituicao['id']; ?></td>
+                                <td><?php echo ($instituicao['nome']); ?></td>
+                                <td><?php echo ($instituicao['cnpj']); ?></td>
+                                <td><?php echo ($instituicao['endereco']); ?></td>
+                                <td><?php echo ($instituicao['telefone']); ?></td>
+                                <td>
+                                    <span class="badge <?php echo $instituicao['ativo'] ? 'badge-success' : 'badge-warning'; ?>">
+                                        <?php echo $instituicao['ativo'] ? 'Ativa' : 'Inativa'; ?>
+                                    </span>
+                                </td>
+                                <td class="actions">
+                                    <a href="editar/editar_instituicao.php?id=<?php echo $instituicao['id']; ?>&aba=instituicoes" class="btn btn-primary">
+                                        <i class="fas fa-edit"></i>
+                                    </a>
+
+                                    <!-- Botão para alternar status -->
+                                    <form action="dashboard_admin.php" method="POST" style="display: inline;">
+                                        <input type="hidden" name="action" value="toggle_instituicao_status">
+                                        <input type="hidden" name="id" value="<?php echo $instituicao['id']; ?>">
+                                        <input type="hidden" name="novo_status" value="<?php echo $instituicao['ativo'] ? 0 : 1; ?>">
+                                        <input type="hidden" name="aba_ativa" value="instituicoes">
+                                        <button type="submit" class="btn <?php echo $instituicao['ativo'] ? 'btn-warning' : 'btn-success'; ?>"
+                                            onclick="return confirm('<?php echo $instituicao['ativo'] ?
+                                                                            'Tem certeza que deseja desativar esta instituição?\\n\\n• Todos os professores vinculados serão desativados' :
+                                                                            'Tem certeza que deseja ativar esta instituição?\\n\\n• Todos os professores vinculados serão ativados'; ?>')">
+                                            <i class="fas <?php echo $instituicao['ativo'] ? 'fa-times' : 'fa-check'; ?>"></i>
+                                        </button>
+                                    </form>
+
+                                    <!-- Botão de deletar (apenas para instituições inativas) -->
+                                    <?php if (!$instituicao['ativo']): ?>
+                                        <form action="dashboard_admin.php" method="POST" style="display: inline;">
+                                            <input type="hidden" name="action" value="delete_instituicao">
+                                            <input type="hidden" name="id" value="<?php echo $instituicao['id']; ?>">
+                                            <input type="hidden" name="aba_ativa" value="instituicoes">
+                                            <button type="submit" class="btn btn-danger" onclick="return confirm('Tem certeza que deseja excluir permanentemente esta instituição?\\n\\nEsta ação não pode ser desfeita!')">
+                                                <i class="fas fa-trash"></i>
+                                            </button>
+                                        </form>
+                                    <?php endif; ?>
+                                </td>
+                            </tr>
                         <?php endforeach; ?>
                     </tbody>
                 </table>
@@ -400,9 +514,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             <select class="form-control" id="aluno_instituicao" name="instituicao_id" required>
                                 <option value="">Selecione uma instituição</option>
                                 <?php foreach ($instituicoes as $instituicao): ?>
-                                <option value="<?php echo $instituicao['id']; ?>">
-                                    <?php echo($instituicao['nome']); ?>
-                                </option>
+                                    <option value="<?php echo $instituicao['id']; ?>">
+                                        <?php echo ($instituicao['nome']); ?>
+                                    </option>
                                 <?php endforeach; ?>
                             </select>
                         </div>
@@ -428,30 +542,31 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     </thead>
                     <tbody>
                         <?php foreach ($alunos as $aluno): ?>
-                        <tr>
-                            <td><?php echo $aluno['id']; ?></td>
-                            <td><?php echo($aluno['nome']); ?></td>
-                            <td><?php echo($aluno['email']); ?></td>
-                            <td><?php echo($aluno['instituicao_nome'] ?? 'N/A'); ?></td>
-                            <td>
-                                <span class="badge <?php echo $aluno['ativo'] ? 'badge-success' : 'badge-warning'; ?>">
-                                    <?php echo $aluno['ativo'] ? 'Ativo' : 'Inativo'; ?>
-                                </span>
-                            </td>
-                            <td class="actions">
-                                <a href="editar/editar_aluno.php?id=<?php echo $aluno['id']; ?>&aba=alunos" class="btn btn-primary">
-                                    <i class="fas fa-edit"></i>
-                                </a>
-                                <form action="dashboard_admin.php" method="POST" style="display: inline;">
-                                    <input type="hidden" name="action" value="delete_user">
-                                    <input type="hidden" name="id" value="<?php echo $aluno['id']; ?>">
-                                    <input type="hidden" name="aba_ativa" value="alunos">
-                                    <button type="submit" class="btn btn-danger" onclick="return confirm('Tem certeza que deseja desativar este aluno?')">
-                                        <i class="fas fa-trash"></i>
-                                    </button>
-                                </form>
-                            </td>
-                        </tr>
+                            <tr>
+                                <td><?php echo $aluno['id']; ?></td>
+                                <td><?php echo ($aluno['nome']); ?></td>
+                                <td><?php echo ($aluno['email']); ?></td>
+                                <td><?php echo ($aluno['instituicao_nome'] ?? 'N/A'); ?></td>
+                                <td>
+                                    <span class="badge <?php echo $aluno['ativo'] ? 'badge-success' : 'badge-warning'; ?>">
+                                        <?php echo $aluno['ativo'] ? 'Ativo' : 'Inativo'; ?>
+                                    </span>
+                                </td>
+                                <td class="actions">
+                                    <a href="editar/editar_aluno.php?id=<?php echo $aluno['id']; ?>&aba=alunos" class="btn btn-primary">
+                                        <i class="fas fa-edit"></i>
+                                    </a>
+                                    <form action="dashboard_admin.php" method="POST" style="display: inline;">
+                                        <input type="hidden" name="action" value="delete_user">
+                                        <input type="hidden" name="id" value="<?php echo $aluno['id']; ?>">
+                                        <input type="hidden" name="tipo" value="aluno">
+                                        <input type="hidden" name="aba_ativa" value="alunos">
+                                        <button type="submit" class="btn btn-danger" onclick="return confirm('Tem certeza que deseja desativar este aluno?')">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </form>
+                                </td>
+                            </tr>
                         <?php endforeach; ?>
                     </tbody>
                 </table>
@@ -487,9 +602,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             <select class="form-control" id="professor_instituicao" name="instituicao_id" required>
                                 <option value="">Selecione uma instituição</option>
                                 <?php foreach ($instituicoes as $instituicao): ?>
-                                <option value="<?php echo $instituicao['id']; ?>">
-                                    <?php echo($instituicao['nome']); ?>
-                                </option>
+                                    <option value="<?php echo $instituicao['id']; ?>">
+                                        <?php echo ($instituicao['nome']); ?>
+                                    </option>
                                 <?php endforeach; ?>
                             </select>
                         </div>
@@ -515,30 +630,31 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     </thead>
                     <tbody>
                         <?php foreach ($professores as $professor): ?>
-                        <tr>
-                            <td><?php echo $professor['id']; ?></td>
-                            <td><?php echo($professor['nome']); ?></td>
-                            <td><?php echo($professor['email']); ?></td>
-                            <td><?php echo($professor['instituicao_nome'] ?? 'N/A'); ?></td>
-                            <td>
-                                <span class="badge <?php echo $professor['ativo'] ? 'badge-success' : 'badge-warning'; ?>">
-                                    <?php echo $professor['ativo'] ? 'Ativo' : 'Inativo'; ?>
-                                </span>
-                            </td>
-                            <td class="actions">
-                                <a href="editar/editar_professor.php?id=<?php echo $professor['id']; ?>&aba=professores" class="btn btn-primary">
-                                    <i class="fas fa-edit"></i>
-                                </a>
-                                <form action="dashboard_admin.php" method="POST" style="display: inline;">
-                                    <input type="hidden" name="action" value="delete_user">
-                                    <input type="hidden" name="id" value="<?php echo $professor['id']; ?>">
-                                    <input type="hidden" name="aba_ativa" value="professores">
-                                    <button type="submit" class="btn btn-danger" onclick="return confirm('Tem certeza que deseja desativar este professor?')">
-                                        <i class="fas fa-trash"></i>
-                                    </button>
-                                </form>
-                            </td>
-                        </tr>
+                            <tr>
+                                <td><?php echo $professor['id']; ?></td>
+                                <td><?php echo ($professor['nome']); ?></td>
+                                <td><?php echo ($professor['email']); ?></td>
+                                <td><?php echo ($professor['instituicao_nome'] ?? 'N/A'); ?></td>
+                                <td>
+                                    <span class="badge <?php echo $professor['ativo'] ? 'badge-success' : 'badge-warning'; ?>">
+                                        <?php echo $professor['ativo'] ? 'Ativo' : 'Inativo'; ?>
+                                    </span>
+                                </td>
+                                <td class="actions">
+                                    <a href="editar/editar_professor.php?id=<?php echo $professor['id']; ?>&aba=professores" class="btn btn-primary">
+                                        <i class="fas fa-edit"></i>
+                                    </a>
+                                    <form action="dashboard_admin.php" method="POST" style="display: inline;">
+                                        <input type="hidden" name="action" value="delete_user">
+                                        <input type="hidden" name="id" value="<?php echo $professor['id']; ?>">
+                                        <input type="hidden" name="tipo" value="professor">
+                                        <input type="hidden" name="aba_ativa" value="professores">
+                                        <button type="submit" class="btn btn-danger" onclick="return confirm('Tem certeza que deseja desativar este professor?\\n\\n• Ele será desvinculado da instituição\\n• Não será reativado automaticamente se a instituição for reativada\\n• Poderá ser vinculado manualmente posteriormente')">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </form>
+                                </td>
+                            </tr>
                         <?php endforeach; ?>
                     </tbody>
                 </table>
@@ -552,22 +668,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             const url = new URL(window.location);
             url.searchParams.set('aba', tabName);
             window.history.replaceState({}, '', url);
-            
+
             // Hide all tabs
             document.querySelectorAll('.tab-content').forEach(tab => {
                 tab.classList.remove('active');
             });
-            
+
             // Show selected tab
             document.getElementById(tabName).classList.add('active');
-            
+
             // Update active button
             document.querySelectorAll('.view-btn').forEach(btn => {
                 btn.classList.remove('active');
             });
-            
+
             buttonElement.classList.add('active');
-            
+
             // Atualizar todos os hidden fields de aba ativa nos formulários
             document.querySelectorAll('input[name="aba_ativa"]').forEach(input => {
                 input.value = tabName;
@@ -578,7 +694,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         document.addEventListener('DOMContentLoaded', function() {
             const urlParams = new URLSearchParams(window.location.search);
             const abaUrl = urlParams.get('aba');
-            
+
             if (abaUrl) {
                 const button = document.querySelector(`.view-btn[onclick*="${abaUrl}"]`);
                 if (button) {
@@ -588,4 +704,5 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         });
     </script>
 </body>
+
 </html>

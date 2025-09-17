@@ -384,3 +384,62 @@ tr:hover {
     color: #721c24;
     border: 1px solid #f5c6cb;
 }
+
+/* Estilos para badges de status */
+.badge-success {
+    background-color: rgba(76, 201, 240, 0.1);
+    color: #4cc9f0;
+    padding: 5px 10px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 500;
+}
+
+.badge-warning {
+    background-color: rgba(248, 150, 30, 0.1);
+    color: #f8961e;
+    padding: 5px 10px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 500;
+}
+
+.badge-danger {
+    background-color: rgba(247, 37, 133, 0.1);
+    color: #f72585;
+    padding: 5px 10px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 500;
+}
+
+/* Estilos para botões de ação */
+.btn-warning {
+    background-color: var(--warning);
+    color: white;
+}
+
+.btn-warning:hover {
+    background-color: #e6890f;
+    color: white;
+}
+
+.btn-success {
+    background-color: var(--success);
+    color: white;
+}
+
+.btn-success:hover {
+    background-color: #3bb4d9;
+    color: white;
+}
+
+.actions {
+    display: flex;
+    gap: 8px;
+    flex-wrap: nowrap;
+}
+
+.actions form {
+    margin: 0;
+}

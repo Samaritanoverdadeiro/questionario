@@ -37,7 +37,9 @@ if (isset($_GET['id'])) {
     if (!$aluno) {
         $_SESSION['mensagem'] = "Aluno não encontrado!";
         $_SESSION['tipo_mensagem'] = "erro";
-        header("Location: ../dashboard_admin.php");
+        // Obter a aba da URL ou usar 'alunos' como padrão
+        $aba = isset($_GET['aba']) ? $_GET['aba'] : 'alunos';
+        header("Location: ../dashboard_admin.php?aba=" . $aba);
         exit;
     }
 }
@@ -64,7 +66,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($stmt->execute([$nome, $email, $instituicao_id, $ativo, $id])) {
             $_SESSION['mensagem'] = "Aluno atualizado com sucesso!";
             $_SESSION['tipo_mensagem'] = "sucesso";
-            header("Location: ../dashboard_admin.php");
+            
+            // Redirecionar mantendo a aba correta
+            $aba = isset($_POST['aba_ativa']) ? $_POST['aba_ativa'] : 'alunos';
+            header("Location: ../dashboard_admin.php?aba=" . $aba);
             exit;
         } else {
             $_SESSION['mensagem'] = "Erro ao atualizar aluno!";
@@ -80,6 +85,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $stmt->execute([$id]);
     $aluno = $stmt->fetch(PDO::FETCH_ASSOC);
 }
+
+// Obter a aba da URL para usar no formulário
+$aba = isset($_GET['aba']) ? $_GET['aba'] : 'alunos';
 ?>
 
 <!DOCTYPE html>
@@ -100,7 +108,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         </div>
         <div class="menu">
             <div class="menu-item">
-                <a href="../dashboard_admin.php" style="color: inherit; text-decoration: none;">
+                <a href="../dashboard_admin.php?aba=<?php echo $aba; ?>" style="color: inherit; text-decoration: none;">
                     <i class="fas fa-arrow-left"></i>
                     <span>Voltar</span>
                 </a>
@@ -110,7 +118,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     <div class="main-content">
         <div class="container">
-            <a href="../dashboard_admin.php" class="btn btn-primary back-btn">
+            <a href="../dashboard_admin.php?aba=<?php echo $aba; ?>" class="btn btn-primary back-btn">
                 <i class="fas fa-arrow-left"></i> Voltar
             </a>
             
@@ -132,6 +140,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <?php if ($aluno): ?>
                 <form action="editar_aluno.php" method="POST">
                     <input type="hidden" name="id" value="<?php echo $aluno['id']; ?>">
+                    <input type="hidden" name="aba_ativa" value="<?php echo $aba; ?>">
                     
                     <div class="form-row">
                         <div class="form-group">
@@ -185,8 +194,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             <i class="fas fa-save"></i> Salvar Alterações
                         </button>
                         
-                        <a href="editar/editar_aluno.php?id=<?php echo $aluno['id']; ?>&aba=alunos" class="btn btn-primary">
-                            <i class="fas fa-edit"></i>
+                        <a href="../dashboard_admin.php?aba=<?php echo $aba; ?>" class="btn btn-secondary">
+                            Cancelar
                         </a>
                     </div>
                 </form>

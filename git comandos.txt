@@ -7,5 +7,5 @@ git push -u origin main
 
 
 git add . 
-git commit -m "fiz o admin"
+git commit -m "fiz OS editar"
 git push -u origin main 

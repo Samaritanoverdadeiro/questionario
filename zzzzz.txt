@@ -1,4 +1,4 @@
-FAZER VOLTAR PRA MESMA ABA QUANDO CLICAR NSO BOTOES
+ajustar a vinculaçao dos professores a escola depois de ela ser excluida
 criar as abas da esquerda
 
 

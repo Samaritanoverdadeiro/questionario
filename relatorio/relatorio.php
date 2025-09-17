@@ -29,26 +29,61 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = $_POST['action'] ?? '';
     
     if ($action === 'reativar_instituicao') {
-        $id = $_POST['id'];
+    $id = $_POST['id'];
+    
+    // Iniciar transação para garantir consistência
+    $pdo->beginTransaction();
+    
+    try {
+        // 1. Reativar a instituição
         $stmt = $pdo->prepare("UPDATE instituicoes SET ativo = 1 WHERE id = ?");
-        if ($stmt->execute([$id])) {
-            $_SESSION['mensagem'] = "Instituição reativada com sucesso!";
-            $_SESSION['tipo_mensagem'] = "sucesso";
-            header("Location: relatorio.php");
-            exit;
-        }
+        $stmt->execute([$id]);
+        
+        // 2. Reativar todos os professores que estavam vinculados a esta instituição
+        // (apenas os que não foram desvinculados manualmente)
+        $stmt = $pdo->prepare("UPDATE usuarios SET ativo = 1 WHERE instituicao_id = ? AND tipo = 'professor'");
+        $stmt->execute([$id]);
+        
+        // Confirmar transação
+        $pdo->commit();
+        
+        $_SESSION['mensagem'] = "Instituição e professores vinculados reativados com sucesso!";
+        $_SESSION['tipo_mensagem'] = "sucesso";
+        
+    } catch (Exception $e) {
+        // Em caso de erro, reverter transação
+        $pdo->rollBack();
+        $_SESSION['mensagem'] = "Erro ao reativar instituição: " . $e->getMessage();
+        $_SESSION['tipo_mensagem'] = "erro";
     }
-    elseif ($action === 'reativar_usuario') {
-        $id = $_POST['id'];
-        $stmt = $pdo->prepare("UPDATE usuarios SET ativo = 1 WHERE id = ?");
-        if ($stmt->execute([$id])) {
-            $_SESSION['mensagem'] = "Usuário reativado com sucesso!";
-            $_SESSION['tipo_mensagem'] = "sucesso";
-            header("Location: relatorio.php");
-            exit;
-        }
-    }
+    
+    header("Location: relatorio.php");
+    exit;
 }
+    elseif ($action === 'reativar_usuario') {
+    $id = $_POST['id'];
+    $tipo = $_POST['tipo'] ?? '';
+    
+    if ($tipo === 'professor') {
+        // Para professores: apenas reativar, NÃO revincular automaticamente
+        $stmt = $pdo->prepare("UPDATE usuarios SET ativo = 1 WHERE id = ?");
+        $stmt->execute([$id]);
+        
+        $_SESSION['mensagem'] = "Professor reativado! Lembre-se de vincular a uma instituição.";
+    } else {
+        // Para alunos: apenas reativar
+        $stmt = $pdo->prepare("UPDATE usuarios SET ativo = 1 WHERE id = ?");
+        $stmt->execute([$id]);
+        
+        $_SESSION['mensagem'] = "Usuário reativado com sucesso!";
+    }
+    
+    $_SESSION['tipo_mensagem'] = "sucesso";
+    header("Location: relatorio.php");
+    exit;
+}
+}
+
 ?>
 
 <!DOCTYPE html>

@@ -1,0 +1,70 @@
+/* estilo_dashboard_tabs.css - Estilos específicos para o sistema de abas */
+
+.tab-content {
+    display: none;
+}
+
+.tab-content.active {
+    display: block;
+    animation: fadeIn 0.3s ease-in;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
+.view-btn.active {
+    background-color: var(--primary);
+    color: white;
+    position: relative;
+}
+
+.view-btn.active::after {
+    content: '';
+    position: absolute;
+    bottom: -2px;
+    left: 0;
+    width: 100%;
+    height: 3px;
+    background-color: var(--primary);
+}
+
+.switch-view {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+}
+
+.view-btn {
+    padding: 12px 20px;
+    background-color: var(--light);
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: all 0.3s;
+}
+
+.view-btn:hover:not(.active) {
+    background-color: #e9ecef;
+}
+
+/* Responsividade para o sistema de abas */
+@media (max-width: 768px) {
+    .switch-view {
+        flex-direction: column;
+    }
+    
+    .view-btn {
+        width: 100%;
+        justify-content: center;
+    }
+}
