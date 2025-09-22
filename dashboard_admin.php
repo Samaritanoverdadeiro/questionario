@@ -128,7 +128,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $endereco = $_POST['endereco'];
         $telefone = $_POST['telefone'];
 
-        $stmt = $pdo->prepare("INSERT INTO instituicoes (nome, cnpj, endereco, telefone) VALUES (?, ?, ?, ?)");
+        $stmt = $pdo->prepare("INSERT INTO instituicoes (nome, cnpj, endereco, telefome) VALUES (?, ?, ?, ?)");
         $stmt->execute([$nome, $cnpj, $endereco, $telefone]);
 
         header("Location: dashboard_admin.php?aba=" . $aba_ativa);
@@ -160,17 +160,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $tipo = $_POST['tipo'] ?? ''; // Novo campo para identificar o tipo de usuário
 
         if ($tipo === 'professor') {
-            // Para professores: desativar e desvincular da instituição
-            $stmt = $pdo->prepare("UPDATE usuarios SET ativo = 0, instituicao_id = NULL WHERE id = ?");
-            $stmt->execute([$id]);
-
-            $_SESSION['mensagem'] = "Professor desativado e desvinculado da instituição!";
-        } else {
-            // Para alunos: apenas desativar
+            // Para professores: desativar mas manter vínculo com a instituição
             $stmt = $pdo->prepare("UPDATE usuarios SET ativo = 0 WHERE id = ?");
             $stmt->execute([$id]);
 
-            $_SESSION['mensagem'] = "Usuário desativado com sucesso!";
+            $_SESSION['mensagem'] = "Professor desativado com sucesso!";
+        } else {
+            // Para alunos: apenas desativar (mantendo o vínculo)
+            $stmt = $pdo->prepare("UPDATE usuarios SET ativo = 0 WHERE id = ?");
+            $stmt->execute([$id]);
+
+            $_SESSION['mensagem'] = "Aluno desativado com sucesso!";
         }
 
         $_SESSION['tipo_mensagem'] = "sucesso";
@@ -187,14 +187,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $stmt = $pdo->prepare("UPDATE instituicoes SET ativo = 0 WHERE id = ?");
             $stmt->execute([$id]);
 
-            // 2. Desativar todos os professores vinculados a esta instituição
-            $stmt = $pdo->prepare("UPDATE usuarios SET ativo = 0, instituicao_id = NULL WHERE instituicao_id = ? AND tipo = 'professor'");
+            // 2. Desativar apenas os professores vinculados a esta instituição (sem remover o vínculo)
+            $stmt = $pdo->prepare("UPDATE usuarios SET ativo = 0 WHERE instituicao_id = ? AND tipo = 'professor'");
             $stmt->execute([$id]);
 
             // Confirmar transação
             $pdo->commit();
 
-            $_SESSION['mensagem'] = "Instituição e professores vinculados desativados com sucesso!";
+            $_SESSION['mensagem'] = "Instituição desativada com sucesso! Professores vinculados também foram desativados.";
             $_SESSION['tipo_mensagem'] = "sucesso";
         } catch (Exception $e) {
             // Em caso de erro, reverter transação
@@ -218,13 +218,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $stmt->execute([$novo_status, $id]);
 
             if ($novo_status == 0) {
-                // Se está desativando, desativar também os professores vinculados
-                $stmt = $pdo->prepare("UPDATE usuarios SET ativo = 0, instituicao_id = NULL WHERE instituicao_id = ? AND tipo = 'professor'");
+                // Se está desativando, desativar apenas os professores vinculados (mantendo o vínculo)
+                $stmt = $pdo->prepare("UPDATE usuarios SET ativo = 0 WHERE instituicao_id = ? AND tipo = 'professor'");
                 $stmt->execute([$id]);
 
                 $_SESSION['mensagem'] = "Instituição e professores desativados com sucesso!";
             } else {
-                // Se está ativando, ativar os professores vinculados
+                // Se está ativando, ativar apenas os professores vinculados (os alunos permanecem inalterados)
                 $stmt = $pdo->prepare("UPDATE usuarios SET ativo = 1 WHERE instituicao_id = ? AND tipo = 'professor'");
                 $stmt->execute([$id]);
 
@@ -271,9 +271,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <i class="fas fa-home"></i>
                 <span>Dashboard</span>
             </div>
-            <div class="menu-item">
-                <i class="fas fa-building"></i>
-                <span>Instituições</span>
+            <div class="menu-item <?php echo basename($_SERVER['PHP_SELF']) == 'instituicoes.php' ? 'active' : ''; ?>">
+                <a href="sidebar/instituicoes.php" style="color: inherit; text-decoration: none;">
+                    <i class="fas fa-building"></i>
+                    <span>Instituições</span>
+                </a>
             </div>
             <div class="menu-item">
                 <i class="fas fa-user-graduate"></i>
@@ -420,7 +422,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             <div class="card">
                 <div class="card-header">
-                    <h3>Instituições Cadastradas</h3>
+                    <h3><i class="fas fa-list"></i>  Instituições Cadastradas</h3>
                 </div>
                 <table>
                     <thead>
@@ -461,7 +463,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                         <button type="submit" class="btn <?php echo $instituicao['ativo'] ? 'btn-warning' : 'btn-success'; ?>"
                                             onclick="return confirm('<?php echo $instituicao['ativo'] ?
                                                                             'Tem certeza que deseja desativar esta instituição?\\n\\n• Todos os professores vinculados serão desativados' :
-                                                                            'Tem certeza que deseja ativar esta instituição?\\n\\n• Todos os professores vinculados serão ativados'; ?>')">
+                                                                            'Tem certeza que deseja ativar esta instituição?\\n\\n• Todos os professores vinculados serão ativados\\n• Os alunos não serão afetados'; ?>')">
                                             <i class="fas <?php echo $instituicao['ativo'] ? 'fa-times' : 'fa-check'; ?>"></i>
                                         </button>
                                     </form>
@@ -514,9 +516,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             <select class="form-control" id="aluno_instituicao" name="instituicao_id" required>
                                 <option value="">Selecione uma instituição</option>
                                 <?php foreach ($instituicoes as $instituicao): ?>
-                                    <option value="<?php echo $instituicao['id']; ?>">
-                                        <?php echo ($instituicao['nome']); ?>
-                                    </option>
+                                    <?php if ($instituicao['ativo']): ?>
+                                        <option value="<?php echo $instituicao['id']; ?>">
+                                            <?php echo ($instituicao['nome']); ?>
+                                        </option>
+                                    <?php endif; ?>
                                 <?php endforeach; ?>
                             </select>
                         </div>
@@ -527,7 +531,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             <div class="card">
                 <div class="card-header">
-                    <h3>Alunos Cadastrados</h3>
+                    <h3><i class="fas fa-list"></i>  Alunos Cadastrados</h3>
                 </div>
                 <table>
                     <thead>
@@ -602,9 +606,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             <select class="form-control" id="professor_instituicao" name="instituicao_id" required>
                                 <option value="">Selecione uma instituição</option>
                                 <?php foreach ($instituicoes as $instituicao): ?>
-                                    <option value="<?php echo $instituicao['id']; ?>">
-                                        <?php echo ($instituicao['nome']); ?>
-                                    </option>
+                                    <?php if ($instituicao['ativo']): ?>
+                                        <option value="<?php echo $instituicao['id']; ?>">
+                                            <?php echo ($instituicao['nome']); ?>
+                                        </option>
+                                    <?php endif; ?>
                                 <?php endforeach; ?>
                             </select>
                         </div>
@@ -615,7 +621,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             <div class="card">
                 <div class="card-header">
-                    <h3>Professores Cadastrados</h3>
+                    <h3><i class="fas fa-list"></i>  Professores Cadastrados</h3>
                 </div>
                 <table>
                     <thead>
@@ -649,7 +655,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                         <input type="hidden" name="id" value="<?php echo $professor['id']; ?>">
                                         <input type="hidden" name="tipo" value="professor">
                                         <input type="hidden" name="aba_ativa" value="professores">
-                                        <button type="submit" class="btn btn-danger" onclick="return confirm('Tem certeza que deseja desativar este professor?\\n\\n• Ele será desvinculado da instituição\\n• Não será reativado automaticamente se a instituição for reativada\\n• Poderá ser vinculado manualmente posteriormente')">
+                                        <button type="submit" class="btn btn-danger" onclick="return confirm('Tem certeza que deseja desativar este professor?\\n\\n• Ele será mantido vinculado à instituição\\n• Será reativado automaticamente se a instituição for reativada')">
                                             <i class="fas fa-trash"></i>
                                         </button>
                                     </form>
