@@ -42,7 +42,7 @@
             </div>
             <?php endif; ?>
             
-            <form id="loginForm" action="autenticar.php" method="POST">
+            <form id="loginForm" action="/login/autenticar.php" method="POST">
                 <div class="form-group">
                     <label for="email">E-mail</label>
                     <input type="email" id="email" name="email" required autocomplete="email" placeholder="seu.email@exemplo.com">

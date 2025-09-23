@@ -1,6 +1,4 @@
-<?php
-// Iniciar sessão
-session_start();
+<?php require_once 'login/auth.php';
 
 // Verificar se o usuário está logado como admin
 if (!isset($_SESSION['usuario_id']) || $_SESSION['usuario_tipo'] !== 'admin') {
@@ -128,7 +126,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $endereco = $_POST['endereco'];
         $telefone = $_POST['telefone'];
 
-        $stmt = $pdo->prepare("INSERT INTO instituicoes (nome, cnpj, endereco, telefome) VALUES (?, ?, ?, ?)");
+        $stmt = $pdo->prepare("INSERT INTO instituicoes (nome, cnpj, endereco, telefone) VALUES (?, ?, ?, ?)");
         $stmt->execute([$nome, $cnpj, $endereco, $telefone]);
 
         header("Location: dashboard_admin.php?aba=" . $aba_ativa);

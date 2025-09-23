@@ -1,7 +1,7 @@
 <?php
 // autenticar.php
 session_start();
-require_once 'config.php';
+require_once '../login/config.php';
 
 // Ativar exibição de erros para debug
 ini_set('display_errors', 1);
@@ -35,38 +35,38 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     
                     // Redirecionar conforme o tipo de usuário
                     if ($usuario['tipo'] === 'professor') {
-                        header('Location: dashboard_professor.php');
+                        header('Location: ../dashboard_professor.php');
                     } elseif ($usuario['tipo'] === 'aluno') {
-                        header('Location: dashboard_aluno.php');
+                        header('Location: ../dashboard_aluno.php');
                     } elseif ($usuario['tipo'] === 'admin') {
-                        header('Location: dashboard_admin.php');
+                        header('Location: ../dashboard_admin.php');
                     } else {
-                        header('Location: index.html?erro=tipo_invalido');
+                        header('Location: ../index.php?erro=tipo_invalido');
                     }
                     exit();
                 } else {
                     // Senha incorreta
-                    header('Location: index.html?erro=credenciais_invalidas');
+                    header('Location: ../index.php?erro=credenciais_invalidas');
                     exit();
                 }
             } else {
                 // Usuário não encontrado
-                header('Location: index.html?erro=credenciais_invalidas');
+                header('Location: ../index.php?erro=credenciais_invalidas');
                 exit();
             }
         } catch (PDOException $e) {
             error_log("Erro de banco de dados: " . $e->getMessage());
-            header('Location: index.html?erro=erro_banco');
+            header('Location: ../index.php?erro=erro_banco');
             exit();
         }
     } else {
         // Campos vazios
-        header('Location: index.html?erro=campos_vazios');
+        header('Location: ../index.php?erro=campos_vazios');
         exit();
     }
 } else {
     // Método não permitido
-    header('Location: index.html');
+    header('Location: ../index.php');
     exit();
 }
 ?>

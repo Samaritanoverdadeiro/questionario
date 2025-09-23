@@ -7,5 +7,5 @@ git push -u origin main
 
 
 git add . 
-git commit -m "fiz OS editar"
+git commit -m "deixei bonito o sidebar"
 git push -u origin main 
