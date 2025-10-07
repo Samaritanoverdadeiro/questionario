@@ -1,7 +1,7 @@
 <?php
 // autenticar.php
 session_start();
-require_once '../login/config.php';
+require_once 'config.php';
 
 // Ativar exibição de erros para debug
 ini_set('display_errors', 1);

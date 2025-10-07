@@ -7,7 +7,7 @@ git push -u origin main
 
 
 git add . 
-git commit -m "estamos fazendo backups"
+git commit -m "problema no servidor"
 git push -u origin main 
 
 
