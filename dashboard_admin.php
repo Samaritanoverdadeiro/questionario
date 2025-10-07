@@ -245,6 +245,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="estilos/estilo_dashboard_admin.css">
     <link rel="stylesheet" href="estilos/estilo_dashboard_tabs.css">
+    <link rel="stylesheet" href="estilos/estilo_barra_pesquisa.css">
+    <script src="js/script.js"></script>
 </head>
 
 <body>
@@ -410,7 +412,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             <div class="card">
                 <div class="card-header">
-                    <h3><i class="fas fa-list"></i>  Instituições Cadastradas</h3>
+                    <h3><i class="fas fa-list"></i> Instituições Cadastradas</h3>
+
+                    <!-- BARRA DE PESQUISA ALUNOS -->
+                    <div class="search-container">
+                        <div class="search-box">
+                            <i class="fas fa-search"></i>
+                            <input type="text" id="searchInstituicoes" placeholder="Pesquisar instituições por nome...">
+                            <button type="button" onclick="clearSearchInstituicoes()" class="clear-btn" style="display: none;">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        </div>
+                        <span id="resultCountInstituicoes" class="result-count"></span>
+                    </div>
                 </div>
                 <table>
                     <thead>
@@ -519,7 +533,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             <div class="card">
                 <div class="card-header">
-                    <h3><i class="fas fa-list"></i>  Alunos Cadastrados</h3>
+                    <h3><i class="fas fa-list"></i> Alunos Cadastrados</h3>
+
+                    <!-- BARRA DE PESQUISA ALUNOS -->
+
+                    <div class="search-container">
+                        <div class="search-box">
+                            <i class="fas fa-search"></i>
+                            <input type="text" id="searchAlunos" placeholder="Pesquisar alunos por nome...">
+                            <button type="button" onclick="clearSearchAlunos()" class="clear-btn" style="display: none;">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        </div>
+                        <span id="resultCountAlunos" class="result-count"></span>
+                    </div>
+
+
                 </div>
                 <table>
                     <thead>
@@ -609,7 +638,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             <div class="card">
                 <div class="card-header">
-                    <h3><i class="fas fa-list"></i>  Professores Cadastrados</h3>
+                    <h3><i class="fas fa-list"></i> Professores Cadastrados</h3>
+
+                    <!-- BARRA DE PESQUISA PROFESSORES -->
+
+                    <div class="search-container">
+                        <div class="search-box">
+                            <i class="fas fa-search"></i>
+                            <input type="text" id="searchProfessores" placeholder="Pesquisar professores por nome...">
+                            <button type="button" onclick="clearSearchProfessores()" class="clear-btn" style="display: none;">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        </div>
+                        <span id="resultCountProfessores" class="result-count"></span>
+                    </div>
+
+
                 </div>
                 <table>
                     <thead>
@@ -656,47 +700,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         </div>
     </div>
 
-    <script>
-        function showTab(tabName, buttonElement) {
-            // Atualizar parâmetro na URL sem recarregar a página
-            const url = new URL(window.location);
-            url.searchParams.set('aba', tabName);
-            window.history.replaceState({}, '', url);
-
-            // Hide all tabs
-            document.querySelectorAll('.tab-content').forEach(tab => {
-                tab.classList.remove('active');
-            });
-
-            // Show selected tab
-            document.getElementById(tabName).classList.add('active');
-
-            // Update active button
-            document.querySelectorAll('.view-btn').forEach(btn => {
-                btn.classList.remove('active');
-            });
-
-            buttonElement.classList.add('active');
-
-            // Atualizar todos os hidden fields de aba ativa nos formulários
-            document.querySelectorAll('input[name="aba_ativa"]').forEach(input => {
-                input.value = tabName;
-            });
-        }
-
-        // Restaurar aba da URL ao carregar a página
-        document.addEventListener('DOMContentLoaded', function() {
-            const urlParams = new URLSearchParams(window.location.search);
-            const abaUrl = urlParams.get('aba');
-
-            if (abaUrl) {
-                const button = document.querySelector(`.view-btn[onclick*="${abaUrl}"]`);
-                if (button) {
-                    showTab(abaUrl, button);
-                }
-            }
-        });
-    </script>
+    <script src="js/script.js"></script>
 </body>
 
 </html>
