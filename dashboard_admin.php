@@ -96,12 +96,23 @@ $stmt_professores = $pdo->query("
 $professores = $stmt_professores->fetchAll(PDO::FETCH_ASSOC);
 
 // Contadores para o dashboard
-// Contadores para o dashboard
 $count_instituicoes_ativas = $pdo->query("SELECT COUNT(*) as total FROM instituicoes WHERE ativo = 1")->fetch()['total'];
 $count_instituicoes_inativas = $pdo->query("SELECT COUNT(*) as total FROM instituicoes WHERE ativo = 0")->fetch()['total'];
 $count_instituicoes_total = $count_instituicoes_ativas + $count_instituicoes_inativas;
 $count_alunos = $pdo->query("SELECT COUNT(*) as total FROM usuarios WHERE tipo = 'aluno'")->fetch()['total'];
 $count_professores = $pdo->query("SELECT COUNT(*) as total FROM usuarios WHERE tipo = 'professor'")->fetch()['total'];
+$count_questoes = $pdo->query("SELECT COUNT(*) as total FROM questoes")->fetch()['total'];
+
+// Contadores para alunos ativos/inativos
+$count_alunos_ativos = $pdo->query("SELECT COUNT(*) as total FROM usuarios WHERE tipo = 'aluno' AND ativo = 1")->fetch()['total'];
+$count_alunos_inativos = $pdo->query("SELECT COUNT(*) as total FROM usuarios WHERE tipo = 'aluno' AND ativo = 0")->fetch()['total'];
+$count_alunos = $count_alunos_ativos + $count_alunos_inativos;
+
+// Contadores para professores ativos/inativos
+$count_professores_ativos = $pdo->query("SELECT COUNT(*) as total FROM usuarios WHERE tipo = 'professor' AND ativo = 1")->fetch()['total'];
+$count_professores_inativos = $pdo->query("SELECT COUNT(*) as total FROM usuarios WHERE tipo = 'professor' AND ativo = 0")->fetch()['total'];
+$count_professores = $count_professores_ativos + $count_professores_inativos;
+
 $count_questoes = $pdo->query("SELECT COUNT(*) as total FROM questoes")->fetch()['total'];
 
 // Processar formulários
@@ -339,6 +350,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <div class="stat-text">
                     <h3><?php echo $count_alunos; ?></h3>
                     <p>Alunos</p>
+                    <small><?php echo $count_alunos_ativos; ?> ativos, <?php echo $count_alunos_inativos; ?> inativos</small>
                 </div>
             </div>
             <div class="stat-card">
@@ -348,6 +360,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <div class="stat-text">
                     <h3><?php echo $count_professores; ?></h3>
                     <p>Professores</p>
+                    <small><?php echo $count_professores_ativos; ?> ativos, <?php echo $count_professores_inativos; ?> inativos</small>
                 </div>
             </div>
             <div class="stat-card">
