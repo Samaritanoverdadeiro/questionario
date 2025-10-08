@@ -7,7 +7,7 @@ git push -u origin main
 
 
 git add . 
-git commit -m "parece que deu certo o teste"
+git commit -m "teste da pasta"
 git push -u origin main 
 git push -u origin senac
 
