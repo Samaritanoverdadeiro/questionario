@@ -10,7 +10,9 @@ git add .
 git commit -m "teste da pasta"
 git push -u origin main 
 git push -u origin senac
+git push -u origin casa
 
 
 git pull origin main
 git pull origin senac
+git pull origin casa
