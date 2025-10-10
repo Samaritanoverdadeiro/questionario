@@ -1,4 +1,4 @@
-
+colocar na popup o nome da instituiçao 
 tirar o voltar ao dashboard do canto direito 
 link no nome para o site da instituiçao. colocar o contato do contratante?
 criar as abas da esquerda                                                           *PRIORIDADE*

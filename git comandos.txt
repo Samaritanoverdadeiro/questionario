@@ -7,7 +7,7 @@ git push -u origin main
 
 
 git add . 
-git commit -m "vou ficar com uma branch"
+git commit -m "ARRUMEI COISA"
 git push -u origin main 
 
 

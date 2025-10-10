@@ -278,15 +278,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     <span>Instituições</span>
                 </a>
             </div>
-            <div class="menu-item">
+            <div class="menu-item" <?php echo basename($_SERVER['PHP_SELF']) == 'alunos.php' ? 'active' : ''; ?>">
+                <a href="sidebar/alunos.php" style="color: inherit; text-decoration: none;">
                 <i class="fas fa-user-graduate"></i>
                 <span>Alunos</span>
             </div>
-            <div class="menu-item">
+            <div class="menu-item" <?php echo basename($_SERVER['PHP_SELF']) == 'professores.php' ? 'active' : ''; ?>">
+                <a href="sidebar/professores.php" style="color: inherit; text-decoration: none;">
                 <i class="fas fa-chalkboard-teacher"></i>
                 <span>Professores</span>
             </div>
-            <div class="menu-item">
+            <div class="menu-item" <?php echo basename($_SERVER['PHP_SELF']) == 'questoes.php' ? 'active' : ''; ?>">
+                <a href="sidebar/questoes.php" style="color: inherit; text-decoration: none;">
                 <i class="fas fa-book"></i>
                 <span>Questões</span>
             </div>
