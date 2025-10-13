@@ -16,202 +16,7 @@
     padding: 20px;
     border-radius: 8px;
     width: 80%;
-    max-width: 800px;
-    max-height: 80vh;
-    overflow-y: auto;
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-}
-
-.close {
-    float: right;
-    font-size: 28px;
-    font-weight: bold;
-    cursor: pointer;
-    color: #aaa;
-    transition: color 0.3s ease;
-}
-
-.close:hover {
-    color: #000;
-}
-
-.disciplina-item {
-    padding: 12px;
-    border-bottom: 1px solid #eee;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    transition: background-color 0.3s ease;
-}
-
-.disciplina-item:hover {
-    background-color: #f8f9fa;
-}
-
-.disciplina-info {
-    flex: 1;
-}
-
-.disciplina-codigo {
-    font-weight: bold;
-    color: #4361ee;
-}
-
-.disciplina-status {
-    padding: 4px 8px;
-    border-radius: 4px;
-    font-size: 12px;
-    font-weight: bold;
-}
-
-.status-ativa {
-    background-color: #e7f7ef;
-    color: #10b759;
-    border: 1px solid #10b759;
-}
-
-.status-inativa {
-    background-color: #fef2f2;
-    color: #ef4444;
-    border: 1px solid #ef4444;
-}
-
-/* Estilos para as tabs */
-.tabs {
-    display: flex;
-    margin-bottom: 20px;
-    border-bottom: 2px solid #e5e7eb;
-    background-color: white;
-    border-radius: 8px 8px 0 0;
-    overflow: hidden;
-}
-
-.tab {
-    padding: 12px 24px;
-    cursor: pointer;
-    border-bottom: 2px solid transparent;
-    margin-bottom: -2px;
-    transition: all 0.3s ease;
-    background-color: #f8f9fa;
-    border-right: 1px solid #e5e7eb;
-}
-
-.tab:last-child {
-    border-right: none;
-}
-
-.tab:hover {
-    background-color: #e9ecef;
-    color: #4361ee;
-}
-
-.tab.active {
-    border-bottom-color: #4361ee;
-    color: #4361ee;
-    font-weight: bold;
-    background-color: white;
-}
-
-.tab-content {
-    display: none;
-    animation: fadeIn 0.3s ease;
-}
-
-.tab-content.active {
-    display: block;
-}
-
-@keyframes fadeIn {
-    from { opacity: 0; }
-    to { opacity: 1; }
-}
-
-/* Estilos para o formulário de disciplinas */
-.form-actions {
-    display: flex;
-    gap: 12px;
-    align-items: center;
-    margin-top: 20px;
-    padding-top: 20px;
-    border-top: 1px solid #e5e7eb;
-}
-
-.form-actions .btn {
-    margin: 0;
-}
-
-/* Estilos para a tabela no modal */
-.modal-content .table-responsive {
-    margin-top: 15px;
-}
-
-.modal-content table {
-    width: 100%;
-    border-collapse: collapse;
-}
-
-.modal-content th {
-    background-color: #f8f9fa;
-    font-weight: 600;
-    text-align: left;
-    padding: 12px;
-    border-bottom: 2px solid #e5e7eb;
-}
-
-.modal-content td {
-    padding: 12px;
-    border-bottom: 1px solid #e5e7eb;
-}
-
-.modal-content tr:last-child td {
-    border-bottom: none;
-}
-
-/* Responsividade */
-@media (max-width: 768px) {
-    .modal-content {
-        width: 95%;
-        margin: 10% auto;
-        padding: 15px;
-    }
-    
-    .tabs {
-        flex-direction: column;
-    }
-    
-    .tab {
-        border-right: none;
-        border-bottom: 1px solid #e5e7eb;
-    }
-    
-    .form-actions {
-        flex-direction: column;
-    }
-    
-    .form-actions .btn {
-        width: 100%;
-    }
-}
-
-/* Estilos para o modal */
-.modal {
-    display: none;
-    position: fixed;
-    z-index: 1000;
-    left: 0;
-    top: 0;
-    width: 100%;
-    height: 100%;
-    background-color: rgba(0,0,0,0.5);
-}
-
-.modal-content {
-    background-color: white;
-    margin: 5% auto;
-    padding: 20px;
-    border-radius: 8px;
-    width: 80%;
-    max-width: 800px;
+    max-width: 900px;
     max-height: 80vh;
     overflow-y: auto;
     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
@@ -287,6 +92,22 @@
     margin: 0;
 }
 
+/* Ações nas tabelas */
+.actions {
+    display: flex;
+    gap: 5px;
+    justify-content: center;
+}
+
+.actions .btn {
+    padding: 6px 10px;
+    font-size: 12px;
+}
+
+.actions form {
+    margin: 0;
+}
+
 /* Responsividade */
 @media (max-width: 768px) {
     .modal-content {
@@ -305,5 +126,13 @@
     
     .disciplina-form {
         padding: 1rem;
+    }
+    
+    .actions {
+        flex-direction: column;
+    }
+    
+    .actions .btn {
+        width: 100%;
     }
 }

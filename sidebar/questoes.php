@@ -20,6 +20,14 @@ try {
     die("Erro na conexão: " . $e->getMessage());
 }
 
+// Buscar instituições para o select (se a tabela existir)
+try {
+    $stmt_instituicoes = $pdo->query("SELECT id, nome FROM instituicoes ORDER BY nome ASC");
+    $instituicoes = $stmt_instituicoes->fetchAll(PDO::FETCH_ASSOC);
+} catch (PDOException $e) {
+    $instituicoes = [];
+}
+
 // Processar formulário de cadastro de disciplina
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = $_POST['action'] ?? '';
@@ -27,7 +35,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($action === 'add_disciplina') {
         $nome = $_POST['nome'];
         $codigo = $_POST['codigo'];
-        $instituicao_id = $_POST['instituicao_id'] ?? 1; // Valor padrão se não houver seleção
+        $instituicao_id = $_POST['instituicao_id'] ?? null;
+
+        // Validar se instituição foi selecionada
+        if (empty($instituicao_id)) {
+            $_SESSION['mensagem'] = "Por favor, selecione uma instituição!";
+            $_SESSION['tipo_mensagem'] = "erro";
+            header("Location: questoes.php");
+            exit;
+        }
 
         try {
             $stmt = $pdo->prepare("INSERT INTO disciplinas (nome, codigo, instituicao_id) VALUES (?, ?, ?)");
@@ -37,6 +53,35 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $_SESSION['tipo_mensagem'] = "sucesso";
         } catch (PDOException $e) {
             $_SESSION['mensagem'] = "Erro ao cadastrar disciplina: " . $e->getMessage();
+            $_SESSION['tipo_mensagem'] = "erro";
+        }
+        
+        header("Location: questoes.php");
+        exit;
+    }
+    
+    // Processar exclusão de disciplina
+    if ($action === 'delete_disciplina') {
+        $id = $_POST['id'];
+
+        try {
+            // Verificar se há questões vinculadas a esta disciplina
+            $stmt_check = $pdo->prepare("SELECT COUNT(*) as total FROM questoes WHERE disciplina_id = ?");
+            $stmt_check->execute([$id]);
+            $questoes_vinculadas = $stmt_check->fetch()['total'];
+
+            if ($questoes_vinculadas > 0) {
+                $_SESSION['mensagem'] = "Não é possível excluir a disciplina pois existem questões vinculadas a ela!";
+                $_SESSION['tipo_mensagem'] = "erro";
+            } else {
+                $stmt = $pdo->prepare("DELETE FROM disciplinas WHERE id = ?");
+                $stmt->execute([$id]);
+
+                $_SESSION['mensagem'] = "Disciplina excluída com sucesso!";
+                $_SESSION['tipo_mensagem'] = "sucesso";
+            }
+        } catch (PDOException $e) {
+            $_SESSION['mensagem'] = "Erro ao excluir disciplina: " . $e->getMessage();
             $_SESSION['tipo_mensagem'] = "erro";
         }
         
@@ -85,16 +130,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
-// Buscar disciplinas para os selects
-$stmt_disciplinas = $pdo->query("SELECT * FROM disciplinas ORDER BY nome ASC");
-$disciplinas = $stmt_disciplinas->fetchAll(PDO::FETCH_ASSOC);
-
-// Buscar instituições para o select (se a tabela existir)
+// Buscar disciplinas com nome da instituição
 try {
-    $stmt_instituicoes = $pdo->query("SELECT id, nome FROM instituicoes ORDER BY nome ASC");
-    $instituicoes = $stmt_instituicoes->fetchAll(PDO::FETCH_ASSOC);
+    $stmt_disciplinas = $pdo->query("
+        SELECT d.*, i.nome as instituicao_nome 
+        FROM disciplinas d 
+        LEFT JOIN instituicoes i ON d.instituicao_id = i.id 
+        ORDER BY d.nome ASC
+    ");
+    $disciplinas = $stmt_disciplinas->fetchAll(PDO::FETCH_ASSOC);
 } catch (PDOException $e) {
-    $instituicoes = [];
+    // Se der erro na junção, busca apenas as disciplinas
+    $stmt_disciplinas = $pdo->query("SELECT * FROM disciplinas ORDER BY nome ASC");
+    $disciplinas = $stmt_disciplinas->fetchAll(PDO::FETCH_ASSOC);
 }
 
 // Buscar professores ativos para o select
@@ -301,9 +349,9 @@ if (isset($_GET['logout'])) {
 
                         <?php if (count($instituicoes) > 0): ?>
                         <div class="form-group">
-                            <label for="disciplina_instituicao">Instituição</label>
-                            <select class="form-control" id="disciplina_instituicao" name="instituicao_id">
-                                <option value="1">Selecione uma instituição</option>
+                            <label for="disciplina_instituicao">Instituição *</label>
+                            <select class="form-control" id="disciplina_instituicao" name="instituicao_id" required>
+                                <option value="">Selecione uma instituição</option>
                                 <?php foreach ($instituicoes as $instituicao): ?>
                                     <option value="<?php echo $instituicao['id']; ?>">
                                         <?php echo htmlspecialchars($instituicao['nome']); ?>
@@ -311,10 +359,15 @@ if (isset($_GET['logout'])) {
                                 <?php endforeach; ?>
                             </select>
                         </div>
+                        <?php else: ?>
+                        <div class="alert alert-warning">
+                            <i class="fas fa-exclamation-triangle"></i>
+                            Nenhuma instituição cadastrada. Por favor, cadastre uma instituição primeiro.
+                        </div>
                         <?php endif; ?>
 
                         <div class="form-actions">
-                            <button type="submit" class="btn btn-primary">
+                            <button type="submit" class="btn btn-primary" <?php echo count($instituicoes) === 0 ? 'disabled' : ''; ?>>
                                 <i class="fas fa-save"></i> Cadastrar Disciplina
                             </button>
                             <button type="button" class="btn btn-secondary" onclick="openModal()">
@@ -510,7 +563,8 @@ if (isset($_GET['logout'])) {
                         <tr>
                             <th>Código</th>
                             <th>Nome</th>
-                            <th>Instituição ID</th>
+                            <th>Instituição</th>
+                            <th>Ações</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -519,12 +573,31 @@ if (isset($_GET['logout'])) {
                                 <tr>
                                     <td><strong><?php echo htmlspecialchars($disciplina['codigo']); ?></strong></td>
                                     <td><?php echo htmlspecialchars($disciplina['nome']); ?></td>
-                                    <td><?php echo htmlspecialchars($disciplina['instituicao_id']); ?></td>
+                                    <td>
+                                        <?php 
+                                        if (isset($disciplina['instituicao_nome'])) {
+                                            echo htmlspecialchars($disciplina['instituicao_nome']);
+                                        } else {
+                                            echo "ID: " . htmlspecialchars($disciplina['instituicao_id']);
+                                        }
+                                        ?>
+                                    </td>
+                                    <td class="actions">
+                                        <!-- Botão de deletar disciplina -->
+                                        <form action="questoes.php" method="POST" style="display: inline;">
+                                            <input type="hidden" name="action" value="delete_disciplina">
+                                            <input type="hidden" name="id" value="<?php echo $disciplina['id']; ?>">
+                                            <button type="submit" class="btn btn-danger" title="Excluir disciplina"
+                                                onclick="return confirm('Tem certeza que deseja excluir a disciplina \\'<?php echo htmlspecialchars($disciplina['nome']); ?>\\'?\\n\\nEsta ação não pode ser desfeita!')">
+                                                <i class="fas fa-trash"></i>
+                                            </button>
+                                        </form>
+                                    </td>
                                 </tr>
                             <?php endforeach; ?>
                         <?php else: ?>
                             <tr>
-                                <td colspan="3" style="text-align: center; padding: 2rem;">
+                                <td colspan="4" style="text-align: center; padding: 2rem;">
                                     <i class="fas fa-graduation-cap" style="font-size: 3rem; color: #ccc; margin-bottom: 1rem;"></i>
                                     <p>Nenhuma disciplina cadastrada.</p>
                                 </td>

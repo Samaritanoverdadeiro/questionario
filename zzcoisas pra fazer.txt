@@ -4,3 +4,6 @@ link no nome para o site da instituiçao. colocar o contato do contratante?
 criar as abas da esquerda                                                           *PRIORIDADE*
 
 
+como fazer a pagina de relatorios? SERA QUE PRECISA?
+COMO FAZER A PAGINA DE PROVAS
+O QUE COLOCAR NAS CONFIGURAÇOES

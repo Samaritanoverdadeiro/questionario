@@ -7,7 +7,7 @@ git push -u origin main
 
 
 git add . 
-git commit -m "ARRUMEI COISA"
+git commit -m "questoes"
 git push -u origin main 
 
 

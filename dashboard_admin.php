@@ -298,7 +298,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <span>Provas</span>
             </div>
             <div class="menu-item">
-                <a href="relatorio/relatorio.php" style="color: inherit; text-decoration: none;">
+                <a href="sidebar/relatorios.php" style="color: inherit; text-decoration: none;">
                     <i class="fas fa-chart-bar"></i>
                     <span>Relatórios</span>
                 </a>
